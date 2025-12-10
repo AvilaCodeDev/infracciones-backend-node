@@ -20,7 +20,6 @@ class Server {
     }
 
     routes() {
-        this.app.use(`${this.apiPath}`, "Hola Mundo");
         this.app.use(`${this.apiPath}/auth`, authRouter);
     }
 
