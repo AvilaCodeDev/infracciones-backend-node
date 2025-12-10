@@ -6,7 +6,7 @@ class Server {
 
     constructor() {
         this.app = express();
-        this.port = process.env.PORT || 4000;
+        this.port = process.env.PORT || 3000;
         this.apiPath = "/api-node";
 
         this.middlewares();
@@ -15,11 +15,14 @@ class Server {
     }
 
     middlewares() {
-        // this.app.use(cors());
+        this.app.use(cors());
         this.app.use(express.json());
     }
 
     routes() {
+        this.app.use(this.apiPath, (req, res) => {
+            res.send("Hello World!");
+        });
         this.app.use(`${this.apiPath}/auth`, authRouter);
     }
 
