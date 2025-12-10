@@ -1,11 +1,8 @@
-import express from 'express';
+import dotenv from "dotenv";
 
-const app = express();
+dotenv.config({ path: ".env.development" });
 
-app.get('/api-node/', (require, res) => {
-    res.send("Te amo, Erika Marisol <3");
-});
+import { Server } from "./models/server.js";
 
-app.listen(3000, () => {
-    console.log("Server running on port 3000");
-});
+const server = new Server();
+server.listen();
