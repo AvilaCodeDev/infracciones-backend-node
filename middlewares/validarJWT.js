@@ -5,8 +5,6 @@ export const validarJWT = (req, res = response, next) => {
     // Leer el token del header Authorization
     const authHeader = req.header('Authorization');
 
-    console.log({ authHeader: authHeader });
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({
             ok: false,

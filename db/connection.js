@@ -32,12 +32,34 @@ const connection = async () => {
     }
 }
 
+const closeConnection = async (db) => {
+    try {
+        await db.end();
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
 
 export const callStoredFunction = async (function_name, params) => {
     try {
         const db = await connection();
         const [results] = await db.query(`SELECT ${function_name}('${params.join("', '")}') As result`);
         // Return just the result value, not the whole object
+        await closeConnection(db);
+        return results;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+export const Select = async (table, condition = []) => {
+    try {
+        const db = await connection();
+        const [results] = await db.query(`Select * from ${table} ${condition.length > 0 ? 'where ' + condition.join(' and ') : ''}`);
+        await closeConnection(db);
         return results;
     } catch (error) {
         console.log(error);

@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRouter from "../routes/auth.js";
+import usersRouter from "../routes/users.js"
 
 class Server {
 
@@ -21,6 +22,7 @@ class Server {
 
     routes() {
         this.app.use(`${this.apiPath}/auth`, authRouter);
+        this.app.use(`${this.apiPath}/users`, usersRouter);
     }
 
     listen() {
