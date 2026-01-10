@@ -41,6 +41,17 @@ const closeConnection = async (db) => {
     }
 }
 
+export const Query = async (query, values = []) => {
+    try {
+        const db = await connection();
+        const [results] = await db.query(query, values);
+        await closeConnection(db);
+        return results;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
 
 export const callStoredFunction = async (function_name, params) => {
     try {
