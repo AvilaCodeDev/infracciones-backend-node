@@ -8,7 +8,8 @@ const connection = async () => {
             port: process.env.DB_PORT,
             user: process.env.DB_USER,
             password: process.env.DB_PASSWORD,
-            database: process.env.DB_NAME
+            database: process.env.DB_NAME,
+            charset: 'utf8mb4',
         };
 
         const db = await mysql.createConnection(mysqlConfig);
@@ -47,6 +48,19 @@ export const callStoredFunction = async (function_name, params) => {
         const db = await connection();
         const [results] = await db.query(`SELECT ${function_name}('${params.join("', '")}') As result`);
         // Return just the result value, not the whole object
+        await closeConnection(db);
+        return results;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+
+export const callStoredProcedure = async (procedure_name, params) => {
+    try {
+        const db = await connection();
+        console.log(`CALL ${procedure_name}('${params.join('", "')}')`)
+        const [results] = await db.query(`CALL ${procedure_name}("${params.join('", "')}")`);
         await closeConnection(db);
         return results;
     } catch (error) {
