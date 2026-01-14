@@ -73,6 +73,7 @@ export const Select = async (table, condition = []) => {
     try {
         const db = await connection();
         const [results] = await db.query(`Select * from ${table} ${condition.length > 0 ? 'where ' + condition.join(' and ') : ''}`);
+        console.log(`Select * from ${table} ${condition.length > 0 ? 'where ' + condition.join(' and ') : ''}`, condition)
         await closeConnection(db);
         return results;
     } catch (error) {
