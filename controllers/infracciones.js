@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { generateFolio, uploadMultipleToCloudinary, deleteFromCloudinary, getImagesFromCloudinary } from '../helpers/cloudinary.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,36 +67,8 @@ const getInfraccionById = async (req, res) => {
         // Obtener el folio de la infracción
         const folio = infraccion[0].folio;
 
-        // Construir la ruta de la carpeta de evidencias
-        const evidenciasPath = path.join(__dirname, '../uploads/evidencias', folio);
-
-        // Array para almacenar las URLs de las evidencias
-        let evidencias = [];
-
-        // Verificar si existe la carpeta de evidencias
-        if (fs.existsSync(evidenciasPath)) {
-            try {
-                // Leer los archivos de la carpeta
-                const files = fs.readdirSync(evidenciasPath);
-
-                // Filtrar solo archivos de imagen y tomar máximo 4
-                const imageFiles = files
-                    .filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file))
-                    .slice(0, 4);
-
-                // Construir las URLs de las evidencias
-                evidencias = imageFiles.map(file => ({
-                    filename: file,
-                    url: `/uploads/evidencias/${folio}/${file}`
-                }));
-
-                console.log(`📸 Se encontraron ${evidencias.length} evidencias para el folio ${folio}`);
-            } catch (error) {
-                console.error(`❌ Error al leer evidencias del folio ${folio}:`, error);
-            }
-        } else {
-            console.warn(`⚠️ No se encontró carpeta de evidencias para el folio ${folio}`);
-        }
+        // Obtener evidencias desde Cloudinary
+        const evidencias = await getImagesFromCloudinary(folio);
 
         res.status(200).json({
             ok: true,
@@ -114,7 +87,11 @@ const getInfraccionById = async (req, res) => {
 }
 
 const createInfraccion = async (req, res) => {
+    let folio = null;
+    let infraccionId = null;
+
     try {
+        console.log(req.body);
         const {
             numero_placa,
             tipo_infraccion_id,
@@ -126,9 +103,8 @@ const createInfraccion = async (req, res) => {
             nombre_infractor
         } = req.body;
 
-        // El folio se genera automáticamente en el middleware de multer
-        const folio = req.folio;
 
+        // Validar campos obligatorios
         if (!numero_placa || !tipo_infraccion_id || !latitud || !longitud) {
             return res.status(400).json({
                 ok: false,
@@ -136,12 +112,14 @@ const createInfraccion = async (req, res) => {
             });
         }
 
+        // Validar que se enviaron archivos
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({
                 ok: false,
                 response: "Debe proporcionar al menos una evidencia fotográfica"
             });
         }
+
         if (req.files.length > 4) {
             return res.status(400).json({
                 ok: false,
@@ -149,6 +127,12 @@ const createInfraccion = async (req, res) => {
             });
         }
 
+        // Generar folio único
+        folio = generateFolio();
+        console.log(`📋 Folio generado: ${folio}`);
+
+        // PASO 1: Insertar infracción en la base de datos
+        console.log(`💾 Insertando infracción en la base de datos...`);
         const [result] = await callStoredFunction('f_registrar_infraccion', [
             folio,
             numero_placa,
@@ -166,22 +150,70 @@ const createInfraccion = async (req, res) => {
         if (result.result == 0) {
             return res.status(400).json({
                 ok: false,
-                response: "Infracción no creada",
+                response: "Infracción no creada en la base de datos",
             });
         }
 
+        infraccionId = result.result;
+        console.log(`✅ Infracción creada en BD con ID: ${infraccionId}`);
+
+        // PASO 2: Subir evidencias a Cloudinary (solo si la inserción fue exitosa)
+        console.log(`📸 Subiendo ${req.files.length} evidencias a Cloudinary...`);
+
+        let evidencias = [];
+        try {
+            evidencias = await uploadMultipleToCloudinary(req.files, folio);
+            console.log(`✅ Todas las evidencias subidas exitosamente`);
+        } catch (uploadError) {
+            console.error('❌ Error subiendo evidencias a Cloudinary:', uploadError);
+
+            // IMPORTANTE: La infracción ya está en la BD, pero sin imágenes
+            // Podrías decidir hacer rollback o dejar la infracción sin imágenes
+            return res.status(201).json({
+                ok: true,
+                response: "Infracción creada pero hubo un error al subir las evidencias",
+                warning: "Las imágenes no se pudieron subir a Cloudinary",
+                data: {
+                    folio,
+                    id: infraccionId,
+                    evidencias: []
+                },
+                token: jwt.sign({ idUsuario: req.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
+            });
+        }
+
+        // PASO 3: Respuesta exitosa
         return res.status(201).json({
             ok: true,
-            response: "Infracción creada exitosamente",
+            response: "Infracción creada exitosamente con evidencias",
             data: {
                 folio,
-                id: result.result
+                id: infraccionId,
+                evidencias: evidencias.map((ev, index) => ({
+                    index: index + 1,
+                    url: ev.url,
+                    public_id: ev.public_id,
+                    width: ev.width,
+                    height: ev.height,
+                    size: ev.bytes
+                }))
             },
             token: jwt.sign({ idUsuario: req.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
         });
 
     } catch (error) {
         console.error('❌ Error en createInfraccion:', error);
+
+        // Si hubo error después de subir a Cloudinary, intentar limpiar
+        if (folio && infraccionId) {
+            try {
+                console.log(`🗑️ Intentando limpiar evidencias de Cloudinary para folio ${folio}...`);
+                await deleteFromCloudinary(folio);
+            } catch (cleanupError) {
+                console.error('❌ Error limpiando evidencias:', cleanupError);
+            }
+        }
+
         return res.status(500).json({
             ok: false,
             response: error.message

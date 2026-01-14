@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { validarJWT } from "../middlewares/validarJWT.js";
-import upload from "../middlewares/upload.js";
+import uploadMemory from "../middlewares/uploadMemory.js";
 import {
     getInfracciones,
     getInfraccionById,
@@ -15,10 +15,10 @@ const router = Router();
 
 // Rutas para infracciones
 router.get('/', validarJWT, getInfracciones)
-// Ruta POST con middleware de multer para manejar hasta 4 archivos de evidencia
+// Ruta POST con middleware de multer (memory) para manejar hasta 4 archivos de evidencia
 router.post('/infraccionesPorPlaca', validarJWT, getInfraccionesByPlate)
 router.post('/getInfraccionById', validarJWT, getInfraccionById)
-router.post('/registrarInfraccion', validarJWT, upload.array('evidencias', 4), createInfraccion)
+router.post('/registrarInfraccion', validarJWT, uploadMemory.array('evidencias', 4), createInfraccion)
 
 router.put('/:id', validarJWT, updateInfraccion)
 router.delete('/:id', validarJWT, deleteInfraccion)
