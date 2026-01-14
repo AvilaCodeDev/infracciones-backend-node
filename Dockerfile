@@ -1,38 +1,28 @@
-# Usar Bun como base
-FROM oven/bun:1 AS base
+# ⚠️ IMPORTANTE: Railway debe usar nixpacks.toml, NO este Dockerfile
+# Este Dockerfile es solo para deployment manual con Docker (Render, DigitalOcean, etc.)
 
-# Establecer directorio de trabajo
+FROM oven/bun:1
+
 WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package.json bun.lock* ./
 
-# Instalar dependencias de producción
-FROM base AS dependencies
-RUN bun install
-
-# Instalar todas las dependencias (incluyendo dev) para build si es necesario
-FROM base AS dev-dependencies
+# Instalar dependencias
 RUN bun install --frozen-lockfile
-
-# Etapa de producción
-FROM base AS production
-
-# Copiar dependencias de producción
-COPY --from=dependencies /app/node_modules ./node_modules
 
 # Copiar código fuente
 COPY . .
 
-# Crear directorio para uploads si no existe
+# Crear directorio para uploads
 RUN mkdir -p uploads/evidencias
 
 # Exponer puerto
 EXPOSE 3000
 
-# Variables de entorno por defecto
+# Variables de entorno
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Comando para iniciar la aplicación con Bun
+# Iniciar aplicación
 CMD ["bun", "run", "index.js"]

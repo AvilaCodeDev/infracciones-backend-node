@@ -9,3 +9,6 @@ cmds = ['mkdir -p uploads/evidencias']
 
 [start]
 cmd = 'bun run index.js'
+
+[variables]
+NODE_ENV = 'production'

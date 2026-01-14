@@ -1,0 +1,41 @@
+# Railway: Usa nixpacks.toml en lugar de este Dockerfile
+# Este Dockerfile es solo para deployment manual con Docker
+
+# Usar Bun como base
+FROM oven/bun:1 AS base
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package.json bun.lock* ./
+
+# Instalar dependencias de producción
+FROM base AS dependencies
+RUN bun install
+
+# Instalar todas las dependencias (incluyendo dev) para build si es necesario
+FROM base AS dev-dependencies
+RUN bun install --frozen-lockfile
+
+# Etapa de producción
+FROM base AS production
+
+# Copiar dependencias de producción
+COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copiar código fuente
+COPY . .
+
+# Crear directorio para uploads si no existe
+RUN mkdir -p uploads/evidencias
+
+# Exponer puerto
+EXPOSE 3000
+
+# Variables de entorno por defecto
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Comando para iniciar la aplicación con Bun
+CMD ["bun", "run", "index.js"]
