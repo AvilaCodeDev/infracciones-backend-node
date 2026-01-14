@@ -9,7 +9,7 @@ COPY package.json bun.lock* ./
 
 # Instalar dependencias de producción
 FROM base AS dependencies
-RUN bun install --frozen-lockfile --production
+RUN bun install
 
 # Instalar todas las dependencias (incluyendo dev) para build si es necesario
 FROM base AS dev-dependencies
