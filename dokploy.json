@@ -1,4 +1,6 @@
 {
     "buildType": "dockerfile",
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "nixpacks": false,
+    "buildPath": "."
 }
