@@ -1,5 +1,5 @@
-# ⚠️ IMPORTANTE: Railway debe usar nixpacks.toml, NO este Dockerfile
-# Este Dockerfile es solo para deployment manual con Docker (Render, DigitalOcean, etc.)
+# Dockerfile para Dokploy, Render, DigitalOcean, etc.
+# Railway debe usar nixpacks.toml en su lugar
 
 FROM oven/bun:1
 
