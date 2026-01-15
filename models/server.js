@@ -3,6 +3,7 @@ import cors from "cors";
 import authRouter from "../routes/auth.js";
 import usersRouter from "../routes/users.js"
 import infraccionesRouter from "../routes/infracciones.js"
+import gruasRouter from "../routes/gruas.js"
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -33,6 +34,7 @@ class Server {
         this.app.use(`${this.apiPath}/auth`, authRouter);
         this.app.use(`${this.apiPath}/users`, usersRouter);
         this.app.use(`${this.apiPath}/infracciones`, infraccionesRouter);
+        this.app.use(`${this.apiPath}/gruas`, gruasRouter);
     }
 
     listen() {
