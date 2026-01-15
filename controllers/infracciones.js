@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { generateFolio, uploadMultipleToCloudinary, deleteFromCloudinary, getImagesFromCloudinary } from '../helpers/cloudinary.js'
+import axios from "axios";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,8 +42,7 @@ const getInfraccionesByPlate = async (req, res) => {
 
         res.status(200).json({
             ok: true,
-            data: infracciones,
-            token: jwt.sign({ idUsuario: req.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
+            data: infracciones
         })
     } catch (error) {
         res.status(500).json({
@@ -182,6 +182,17 @@ const createInfraccion = async (req, res) => {
             });
         }
 
+        axios.post('http://localhost:3100/infracciones', {
+            linea_captura: `${folio}-${fecha_hora.replace(' ', '-').replace(':', '-')}`,
+            folio,
+            id: infraccionId,
+            placa: numero_placa.trim(),
+            latitud,
+            longitud,
+            fecha_hora,
+            alcaldia,
+            estatus: "no pagada"
+        })
         // PASO 3: Respuesta exitosa
         return res.status(201).json({
             ok: true,
@@ -310,6 +321,27 @@ const getTiposInfraccion = async (req, res) => {
     }
 }
 
+const getInfraccionesAgente = async (req, res) => {
+    try {
+        const { id_agente } = req.body;
+
+        const result = await callStoredProcedure('sp_infracciones_hoy_agente', [id_agente]);
+
+        // The first element of the result array contains the rows returned by the SP
+        const infracciones = result[0];
+
+        res.status(200).json({
+            ok: true,
+            data: infracciones,
+            token: jwt.sign({ idUsuario: req.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
+        })
+    } catch (error) {
+        res.status(500).json({
+            ok: false,
+            response: error.message
+        })
+    }
+}
 export {
     getInfracciones,
     getInfraccionesByPlate,
@@ -317,5 +349,7 @@ export {
     createInfraccion,
     updateInfraccion,
     deleteInfraccion,
-    getTiposInfraccion
+    getTiposInfraccion,
+    getInfraccionesAgente
 };
+

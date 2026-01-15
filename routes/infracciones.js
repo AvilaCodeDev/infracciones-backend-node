@@ -8,15 +8,17 @@ import {
     updateInfraccion,
     deleteInfraccion,
     getTiposInfraccion,
-    getInfraccionesByPlate
+    getInfraccionesByPlate,
+    getInfraccionesAgente
 } from "../controllers/infracciones.js";
 
 const router = Router();
 
 // Rutas para infracciones
 router.get('/', validarJWT, getInfracciones)
-// Ruta POST con middleware de multer (memory) para manejar hasta 4 archivos de evidencia
-router.post('/infraccionesPorPlaca', validarJWT, getInfraccionesByPlate)
+
+router.post('/infraccionesPorPlaca', getInfraccionesByPlate)
+router.post('/infraccionesAgente', validarJWT, getInfraccionesAgente)
 router.post('/getInfraccionById', validarJWT, getInfraccionById)
 router.post('/registrarInfraccion', validarJWT, uploadMemory.array('evidencias', 4), createInfraccion)
 

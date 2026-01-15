@@ -1,12 +1,15 @@
-import { callStoredFunction } from "../db/connection.js";
+import { callStoredFunction, callStoredProcedure } from "../db/connection.js";
 import jwt from 'jsonwebtoken'
 
 const login = async (req, res) => {
     try {
         const { correo, password } = req.body;
         console.log(correo, password);
-        const users = await callStoredFunction("login_fn", [correo, password]);
-        if (users[0].result == null) {
+        const users = await callStoredProcedure("sp_login", [correo, password]);
+
+        console.log(users)
+
+        if (users.flat()[0].resultado_login == null) {
             return res.status(400).json({
                 ok: false,
                 response: "Usuario y/o contraseña incorrectos."
@@ -15,11 +18,39 @@ const login = async (req, res) => {
 
 
         return res.status(200).json({
-            ...users[0].result,
-            token: jwt.sign({ idUsuario: users[0].result.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
+            ...users.flat()[0].resultado_login,
+            token: jwt.sign({ idUsuario: users.flat()[0].resultado_login.idUsuario }, process.env.JWT_KEY, { expiresIn: '1h', })
         });
     } catch (error) {
         console.error("Login error:", error);
+
+        // Manejar error de sesión activa (SIGNAL desde stored procedure)
+        if (error.errno === 1644 || error.code === 'ER_SIGNAL_EXCEPTION') {
+            return res.status(409).json({
+                ok: false,
+                response: error.sqlMessage || "El usuario ya tiene una sesión activa",
+                errorCode: "ACTIVE_SESSION"
+            });
+        }
+
+        // Otros errores de base de datos
+        return res.status(500).json({
+            ok: false,
+            response: error.message
+        });
+    }
+}
+
+const logout = async (req, res) => {
+    try {
+        const { idUsuario } = req.body;
+        await callStoredProcedure("sp_logout", [idUsuario]);
+        return res.status(200).json({
+            ok: true,
+            response: "Usuario desconectado exitosamente"
+        });
+    } catch (error) {
+        console.error("Logout error:", error);
         return res.status(500).json({
             ok: false,
             response: error.message
@@ -57,4 +88,4 @@ const validateToken = async (req, res) => {
     }
 }
 
-export { login, validateToken };
+export { login, validateToken, logout };

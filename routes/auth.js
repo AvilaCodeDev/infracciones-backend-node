@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { login, validateToken } from "../controllers/auth.js";
+import { login, logout, validateToken } from "../controllers/auth.js";
 import { validarCampos } from "../middlewares/validarCampos.js";
 import { validarJWT } from "../middlewares/validarJWT.js";
 import { check } from "express-validator";
@@ -13,5 +13,6 @@ router.post("/login", [
 ], login);
 
 router.get("/validate-token", validarJWT, validateToken);
+router.post("/logout", logout);
 
 export default router;

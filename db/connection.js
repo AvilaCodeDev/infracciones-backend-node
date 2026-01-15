@@ -46,7 +46,8 @@ const closeConnection = async (db) => {
 export const callStoredFunction = async (function_name, params) => {
     try {
         const db = await connection();
-        const [results] = await db.query(`SELECT ${function_name}('${params.join("', '")}') As result`);
+        const paramString = params.length > 0 ? `'${params.join("', '")}'` : "";
+        const [results] = await db.query(`SELECT ${function_name}(${paramString}) As result`);
         // Return just the result value, not the whole object
         await closeConnection(db);
         return results;
@@ -59,8 +60,9 @@ export const callStoredFunction = async (function_name, params) => {
 export const callStoredProcedure = async (procedure_name, params) => {
     try {
         const db = await connection();
-        console.log(`CALL ${procedure_name}('${params.join('", "')}')`)
-        const [results] = await db.query(`CALL ${procedure_name}("${params.join('", "')}")`);
+        const paramString = params.length > 0 ? `"${params.join('", "')}"` : "";
+        console.log(`CALL ${procedure_name}(${paramString})`)
+        const [results] = await db.query(`CALL ${procedure_name}(${paramString})`);
         await closeConnection(db);
         return results;
     } catch (error) {

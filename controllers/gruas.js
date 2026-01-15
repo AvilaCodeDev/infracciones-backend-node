@@ -5,8 +5,8 @@ import jwt from 'jsonwebtoken';
 const registrarSolicitudGrua = async (req, res) => {
     try {
         const {
-            id_infraccion,
-            id_agente,
+            infraccion_id,
+            agente_id,
             fecha,
             latitud,
             longitud,
@@ -14,14 +14,14 @@ const registrarSolicitudGrua = async (req, res) => {
         } = req.body;
 
         // Validar campos obligatorios
-        if (!id_infraccion) {
+        if (!infraccion_id) {
             return res.status(400).json({
                 ok: false,
                 response: "El campo 'id_infraccion' es obligatorio"
             });
         }
 
-        if (!id_agente) {
+        if (!agente_id) {
             return res.status(400).json({
                 ok: false,
                 response: "El campo 'id_agente' es obligatorio"
@@ -57,14 +57,14 @@ const registrarSolicitudGrua = async (req, res) => {
         }
 
         // Validar tipos de datos
-        if (isNaN(id_infraccion)) {
+        if (isNaN(infraccion_id)) {
             return res.status(400).json({
                 ok: false,
                 response: "El campo 'id_infraccion' debe ser un número"
             });
         }
 
-        if (isNaN(id_agente)) {
+        if (isNaN(agente_id)) {
             return res.status(400).json({
                 ok: false,
                 response: "El campo 'id_agente' debe ser un número"
@@ -129,19 +129,21 @@ const registrarSolicitudGrua = async (req, res) => {
             });
         }
 
-        console.log(`🚛 Registrando solicitud de grúa para infracción ${id_infraccion}`);
+        console.log(`🚛 Registrando solicitud de grúa para infracción ${infraccion_id}`);
 
         // Llamar a la función almacenada para registrar la solicitud
         // Ajusta el nombre de la función según tu base de datos
         const [result] = await callStoredFunction('f_registrar_solicitud_grua', [
-            id_infraccion,
-            id_agente,
+            infraccion_id,
+            agente_id,
             '1',
             fecha,
             lat,
             lng,
             motivo.trim()
         ]);
+
+        console.log(result);
 
         if (result.result == 0) {
             return res.status(400).json({
@@ -152,13 +154,55 @@ const registrarSolicitudGrua = async (req, res) => {
 
         console.log(`✅ Solicitud de grúa registrada con ID: ${result.result}`);
 
+        try {
+            const agentes = await callStoredFunction('agentes_grua_disponibles_ids_fn', []);
+            console.log(agentes);
+            if (agentes && agentes.length > 0 && agentes[0].result) {
+                let ids = [];
+                // Handle different possible return types (JSON string or direct value)
+                if (typeof agentes[0].result === 'string') {
+                    try {
+                        // Attempt to parse if it's a JSON array string
+                        const parsed = JSON.parse(agentes[0].result);
+                        ids = Array.isArray(parsed) ? parsed : [parsed];
+                    } catch (e) {
+                        // If not JSON, maybe just a single ID string
+                        ids = [agentes[0].result];
+                    }
+                } else {
+                    // Number or other type
+                    ids = [agentes[0].result];
+                }
+
+                if (req.io) {
+                    ids.forEach(id => {
+                        console.log(`📡 Enviando notificación a grúa ${id}`);
+                        req.io.emit(`notificacion_grua_${id}`, {
+                            tipo: 'NUEVA_SOLICITUD',
+                            mensaje: 'Nueva solicitud de grúa disponible',
+                            data: {
+                                id_solicitud: result.result,
+                                infraccion_id,
+                                latitud: lat,
+                                longitud: lng,
+                                motivo: motivo.trim(),
+                                fecha
+                            }
+                        });
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("⚠️ Error enviando notificaciones:", error);
+        }
+
         return res.status(201).json({
             ok: true,
             response: "Solicitud de grúa registrada exitosamente",
             data: {
                 id_solicitud: result.result,
-                id_infraccion,
-                id_agente,
+                infraccion_id,
+                agente_id,
                 fecha,
                 latitud: lat,
                 longitud: lng,
